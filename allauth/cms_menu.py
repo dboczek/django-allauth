@@ -11,9 +11,11 @@ class AllauthMenu(CMSAttachMenu):
 
     def get_nodes(self, request):
         return [
-            NavigationNode(_('Sign Up'), reverse('account_signup'), 1, attr={'visible_for_authenticated': False}),
-            NavigationNode(_('Login'),   reverse('account_login'),  2, attr={'visible_for_authenticated': False}),
-            NavigationNode(_('Logout'),  reverse('account_logout'), 3, attr={'visible_for_anonymous':     False}),
+            NavigationNode(_('Sign Up'),          reverse('account_signup'),          1, attr={'visible_for_authenticated': False}),
+            NavigationNode(_('Login'),            reverse('account_login'),           2, attr={'visible_for_authenticated': False}),
+            NavigationNode(_('Logout'),           reverse('account_logout'),          3, attr={'visible_for_anonymous':     False}),
+            NavigationNode(_('Change Password'),  reverse('account_change_password'), 4, attr={'visible_for_anonymous':     False}),
+            NavigationNode(_('Email Addresses'),  reverse('account_email'),           5, attr={'visible_for_anonymous':     False}),
         ]
 
 menu_pool.register_menu(AllauthMenu)
