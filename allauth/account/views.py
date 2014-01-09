@@ -143,7 +143,7 @@ class CloseableSignupMixin(object):
         return self.response_class(**response_kwargs)
 
 
-class SignupView(RedirectAuthenticatedUserMixin, CloseableSignupMixin,
+class SignupView(RedirectAuthenticatedUserMixin, CloseableSignupMixin, AjaxCapableProcessFormViewMixin,
                  FormView):
     template_name = "account/signup.html"
     form_class = SignupForm
@@ -289,18 +289,22 @@ class EmailView(FormView):
         kwargs["user"] = self.request.user
         return kwargs
 
+    def form_invalid(self, form):
+        return _ajax_response(self.request, super(EmailView, self).form_invalid(form), form)
+
     def form_valid(self, form):
         email_address = form.save(self.request)
         get_adapter().add_message(self.request,
                                   messages.INFO,
                                   'account/messages/'
                                   'email_confirmation_sent.txt',
-                                  {'email': form.cleaned_data["email"]})
+                                  {'email': form.cleaned_data["new_email"]})
         signals.email_added.send(sender=self.request.user.__class__,
                                  request=self.request,
                                  user=self.request.user,
                                  email_address=email_address)
-        return super(EmailView, self).form_valid(form)
+        self.request.method = 'GET'
+        return _ajax_response(self.request, self.get(self.request))
 
     def post(self, request, *args, **kwargs):
         res = None
@@ -313,10 +317,7 @@ class EmailView(FormView):
                 res = self._action_remove(request)
             elif "action_primary" in request.POST:
                 res = self._action_primary(request)
-            # TODO: Ugly. But if we .get() here the email is used as
-            # initial for the add form, whereas the user was not
-            # interacting with that form..
-            res = res or HttpResponseRedirect(reverse('account_email'))
+            res = _ajax_response(self.request, res or self.get(request, *args, **kwargs))
         return res or self.get(request, *args, **kwargs)
 
     def _action_send(self, request, *args, **kwargs):
@@ -332,7 +333,8 @@ class EmailView(FormView):
                                       'email_confirmation_sent.txt',
                                       {'email': email})
             email_address.send_confirmation(request)
-            return HttpResponseRedirect(self.get_success_url())
+            self.request.method = 'GET'
+            return self.get(self.request)
         except EmailAddress.DoesNotExist:
             pass
 
@@ -359,7 +361,8 @@ class EmailView(FormView):
                                           messages.SUCCESS,
                                           'account/messages/email_deleted.txt',
                                           {"email": email})
-                return HttpResponseRedirect(self.get_success_url())
+                self.request.method = 'GET'
+                return self.get(self.request)
         except EmailAddress.DoesNotExist:
             pass
 
@@ -400,7 +403,8 @@ class EmailView(FormView):
                           user=request.user,
                           from_email_address=from_email_address,
                           to_email_address=email_address)
-                return HttpResponseRedirect(self.get_success_url())
+            self.request.method = 'GET'
+            return self.get(self.request)
         except EmailAddress.DoesNotExist:
             pass
 
@@ -414,7 +418,7 @@ class EmailView(FormView):
 email = login_required(EmailView.as_view())
 
 
-class PasswordChangeView(FormView):
+class PasswordChangeView(AjaxCapableProcessFormViewMixin, FormView):
     template_name = "account/password_change.html"
     form_class = ChangePasswordForm
     success_url = reverse_lazy("account_change_password")
@@ -450,7 +454,7 @@ class PasswordChangeView(FormView):
 password_change = login_required(PasswordChangeView.as_view())
 
 
-class PasswordSetView(FormView):
+class PasswordSetView(AjaxCapableProcessFormViewMixin, FormView):
     template_name = "account/password_set.html"
     form_class = SetPasswordForm
     success_url = reverse_lazy("account_set_password")
@@ -581,7 +585,7 @@ class LogoutView(TemplateResponseMixin, View):
         url = self.get_redirect_url()
         if self.request.user.is_authenticated():
             self.logout()
-        return redirect(url)
+        return _ajax_response(self.request, redirect(url))
 
     def logout(self):
         get_adapter().add_message(self.request,

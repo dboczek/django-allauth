@@ -243,18 +243,26 @@ class DefaultAccountAdapter(object):
 
     def ajax_response(self, request, response, redirect_to=None, form=None):
         data = {}
+        status = response.status_code
         if redirect_to:
             status = 200
             data['location'] = redirect_to
+        else:
+            data['messages'] = [{
+                'message': m.message,
+                'level': m.level,
+                'tags': m.tags,
+                'extra_tags': m.extra_tags
+            } for m in messages.get_messages(request)]
         if form:
             if form.is_valid():
                 status = 200
             else:
                 status = 400
                 data['form_errors'] = form._errors
-            if hasattr(response, 'render'):
-                response.render()
-            data['html'] = response.content.decode('utf8')
+        if hasattr(response, 'render'):
+            response.render()
+        data['html'] = response.content.decode('utf8')
         return HttpResponse(json.dumps(data),
                             status=status,
                             content_type='application/json')

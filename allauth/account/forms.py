@@ -272,12 +272,12 @@ class UserForm(forms.Form):
 
 class AddEmailForm(UserForm):
 
-    email = forms.EmailField(label=_("E-mail"),
+    new_email = forms.EmailField(label=_("E-mail"),
                              required=True,
                              widget=forms.TextInput(attrs={"size": "30"}))
 
-    def clean_email(self):
-        value = self.cleaned_data["email"]
+    def clean_new_email(self):
+        value = self.cleaned_data["new_email"]
         value = get_adapter().clean_email(value)
         errors = {
             "this_account": _("This e-mail address is already associated"
@@ -296,7 +296,7 @@ class AddEmailForm(UserForm):
     def save(self, request):
         return EmailAddress.objects.add_email(request,
                                               self.user,
-                                              self.cleaned_data["email"],
+                                              self.cleaned_data["new_email"],
                                               confirm=True)
 
 
